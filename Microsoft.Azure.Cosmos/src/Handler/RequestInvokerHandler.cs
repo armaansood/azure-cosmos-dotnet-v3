@@ -142,6 +142,7 @@ namespace Microsoft.Azure.Cosmos.Handlers
 
             using (ITrace childTrace = trace.StartChild(this.FullHandlerName, TraceComponent.RequestHandler, Tracing.TraceLevel.Info))
             {
+                Console.WriteLine("$$$$$$Task<ResponseMessage> SendAsync$$$$$");
                 try
                 {
                     HttpMethod method = RequestInvokerHandler.GetHttpMethod(resourceType, operationType);
