@@ -177,10 +177,48 @@ namespace Microsoft.Azure.Cosmos.Handlers
                                 }
                                 catch (DocumentClientException dce)
                                 {
+                                    if (cosmosContainerCore != null && cosmosContainerCore.ClientContext.ClientOptions.EnableClientTelemetry)
+                                    {
+                                        cosmosContainerCore
+                                            .ClientContext
+                                            .DocumentClient
+                                            .clientTelemetry
+                                            .Collect(
+                                        this.client,
+                                        null,
+                                        (System.Net.HttpStatusCode)dce.StatusCode,
+                                        0,
+                                        cosmosContainerCore.Database.Id,
+                                        cosmosContainerCore.Id,
+                                        request.OperationType,
+                                        request.ResourceType,
+                                        request.RequestOptions?.BaseConsistencyLevel.Value,
+                                        default);
+                                    }
+
                                     return dce.ToCosmosResponseMessage(request);
                                 }
                                 catch (CosmosException ce)
                                 {
+                                    if (cosmosContainerCore != null && cosmosContainerCore.ClientContext.ClientOptions.EnableClientTelemetry)
+                                    {
+                                        cosmosContainerCore
+                                            .ClientContext
+                                            .DocumentClient
+                                            .clientTelemetry
+                                            .Collect(
+                                        this.client,
+                                        ce.Diagnostics,
+                                        ce.StatusCode,
+                                        0,
+                                        cosmosContainerCore.Database.Id,
+                                        cosmosContainerCore.Id,
+                                        request.OperationType,
+                                        request.ResourceType,
+                                        request.RequestOptions?.BaseConsistencyLevel.Value,
+                                        default);
+                                    }
+
                                     return ce.ToCosmosResponseMessage(request);
                                 }
                             }
@@ -211,6 +249,25 @@ namespace Microsoft.Azure.Cosmos.Handlers
                                     subStatusCode: default,
                                     activityId: Guid.Empty.ToString(),
                                     requestCharge: default);
+
+                                if (cosmosContainerCore != null && cosmosContainerCore.ClientContext.ClientOptions.EnableClientTelemetry)
+                                {
+                                    cosmosContainerCore
+                                        .ClientContext
+                                        .DocumentClient
+                                        .clientTelemetry
+                                        .Collect(
+                                    this.client,
+                                    notFound.Diagnostics,
+                                    notFound.StatusCode,
+                                    0,
+                                    cosmosContainerCore.Database.Id,
+                                    cosmosContainerCore.Id,
+                                    request.OperationType,
+                                    request.ResourceType,
+                                    request.RequestOptions?.BaseConsistencyLevel.Value,
+                                    default);
+                                }
                                 return notFound.ToCosmosResponseMessage(request);
                             }
 
@@ -226,6 +283,25 @@ namespace Microsoft.Azure.Cosmos.Handlers
                                     subStatusCode: (int)SubStatusCodes.PartitionKeyRangeGone,
                                     activityId: Guid.NewGuid().ToString(),
                                     requestCharge: default);
+
+                                if (cosmosContainerCore != null && cosmosContainerCore.ClientContext.ClientOptions.EnableClientTelemetry)
+                                {
+                                    cosmosContainerCore
+                                        .ClientContext
+                                        .DocumentClient
+                                        .clientTelemetry
+                                        .Collect(
+                                    this.client,
+                                    goneException.Diagnostics,
+                                    goneException.StatusCode,
+                                    0,
+                                    cosmosContainerCore.Database.Id,
+                                    cosmosContainerCore.Id,
+                                    request.OperationType,
+                                    request.ResourceType,
+                                    request.RequestOptions?.BaseConsistencyLevel.Value,
+                                    default);
+                                }
 
                                 return goneException.ToCosmosResponseMessage(request);
                             }
@@ -290,7 +366,7 @@ namespace Microsoft.Azure.Cosmos.Handlers
                         cosmosContainerCore.Id,
                         request.OperationType,
                         request.ResourceType,
-                        request.RequestOptions?.BaseConsistencyLevel.Value,
+                        request.RequestOptions?.BaseConsistencyLevel.GetValueOrDefault(),
                         request.Headers.RequestCharge);
                     }
 
