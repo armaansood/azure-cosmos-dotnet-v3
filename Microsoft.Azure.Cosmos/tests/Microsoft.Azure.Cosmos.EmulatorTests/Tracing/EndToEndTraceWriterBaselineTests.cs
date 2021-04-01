@@ -947,6 +947,236 @@
             this.ExecuteTestSuite(inputs);
         }
 
+        [TestMethod]
+        public async Task CancellationTokenAsync()
+        {
+            List<Input> inputs = new List<Input>();
+
+            int startLineNumber;
+            int endLineNumber;
+
+            //----------------------------------------------------------------
+            //  ReadFeed
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                FeedIteratorInternal feedIterator = (FeedIteratorInternal)container.GetItemQueryStreamIterator(
+                    queryText: null,
+                    requestOptions: new QueryRequestOptions() { MaxItemCount = 1 });
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
+                Trace rootTrace;
+                using (rootTrace = Trace.GetRootTrace("Root Trace"))
+                {
+                    await feedIterator.ReadNextAsync(rootTrace, cancellationToken: cancellationTokenSource.Token);
+
+                    cancellationTokenSource.Cancel();
+
+                    try
+                    {
+                        await feedIterator.ReadNextAsync(rootTrace, cancellationToken: cancellationTokenSource.Token);
+                        Assert.Fail("Should not reach here");
+                    }
+                    catch (CosmosOperationCanceledException)
+                    {
+                    }
+                }
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("ReadFeed", rootTrace, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            //----------------------------------------------------------------
+            //  ReadFeed Public API Typed
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                FeedIterator<JToken> feedIterator = container
+                    .GetItemQueryIterator<JToken>(queryText: null, requestOptions: new QueryRequestOptions() { MaxItemCount = 1 });
+
+                List<ITrace> traces = new List<ITrace>();
+
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: default);
+                    ITrace trace = ((CosmosTraceDiagnostics)responseMessage.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.Cancel();
+
+                try
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: cancellationTokenSource.Token);
+                    Assert.Fail("Should not reach here");
+                }
+                catch (CosmosOperationCanceledException ex)
+                {
+                    ITrace trace = ((CosmosTraceDiagnostics)ex.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+
+                ITrace traceForest = TraceJoiner.JoinTraces(traces);
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("ReadFeed Public API Typed", traceForest, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            //----------------------------------------------------------------
+            //  Query
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                FeedIteratorInternal feedIterator = (FeedIteratorInternal)container.GetItemQueryStreamIterator(
+                    queryText: "SELECT * FROM c",
+                    requestOptions: new QueryRequestOptions() { MaxItemCount = 1 });
+
+                Trace rootTrace;
+                using (rootTrace = Trace.GetRootTrace("Root Trace"))
+                {
+                    await feedIterator.ReadNextAsync(rootTrace, cancellationToken: default);
+
+                    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                    cancellationTokenSource.Cancel();
+
+                    try
+                    {
+                        await feedIterator.ReadNextAsync(rootTrace, cancellationToken: cancellationTokenSource.Token);
+                        Assert.Fail("Should not reach here");
+                    }
+                    catch (CosmosOperationCanceledException)
+                    {
+                    }
+                }
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("Query", rootTrace, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            //----------------------------------------------------------------
+            //  Query Public API Typed
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                FeedIterator<JToken> feedIterator = container.GetItemQueryIterator<JToken>(
+                    queryText: "SELECT * FROM c",
+                    requestOptions: new QueryRequestOptions()
+                    {
+                        MaxItemCount = 1
+                    });
+
+                List<ITrace> traces = new List<ITrace>();
+
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: default);
+                    ITrace trace = ((CosmosTraceDiagnostics)responseMessage.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.Cancel();
+
+                try
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: cancellationTokenSource.Token);
+                    Assert.Fail("Should not reach here");
+                }
+                catch (CosmosOperationCanceledException ex)
+                {
+                    ITrace trace = ((CosmosTraceDiagnostics)ex.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+
+                ITrace traceForest = TraceJoiner.JoinTraces(traces);
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("Query Public API Typed", traceForest, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            //----------------------------------------------------------------
+            //  ChangeFeed
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                ContainerInternal containerInternal = (ContainerInternal)container;
+                FeedIteratorInternal feedIterator = (FeedIteratorInternal)containerInternal.GetChangeFeedStreamIterator(
+                    ChangeFeedStartFrom.Beginning(),
+                    ChangeFeedMode.Incremental,
+                    new ChangeFeedRequestOptions()
+                    {
+                        PageSizeHint = 1,
+                    });
+
+                TraceForBaselineTesting rootTrace;
+                using (rootTrace = TraceForBaselineTesting.GetRootTrace())
+                {
+                    await feedIterator.ReadNextAsync(rootTrace, cancellationToken: default);
+
+                    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                    cancellationTokenSource.Cancel();
+
+                    try
+                    {
+                        await feedIterator.ReadNextAsync(rootTrace, cancellationToken: cancellationTokenSource.Token);
+                        Assert.Fail("Should not have reached here.");
+                    }
+                    catch (CosmosOperationCanceledException)
+                    {
+                    }
+                }
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("ChangeFeed", rootTrace, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            //----------------------------------------------------------------
+            //  ChangeFeed Public API Typed
+            //----------------------------------------------------------------
+            {
+                startLineNumber = GetLineNumber();
+                ContainerInternal containerInternal = (ContainerInternal)container;
+                FeedIterator<JToken> feedIterator = containerInternal.GetChangeFeedIterator<JToken>(
+                    ChangeFeedStartFrom.Beginning(),
+                    ChangeFeedMode.Incremental);
+
+                List<ITrace> traces = new List<ITrace>();
+
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: default);
+                    ITrace trace = ((CosmosTraceDiagnostics)responseMessage.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.Cancel();
+
+                try
+                {
+                    FeedResponse<JToken> responseMessage = await feedIterator.ReadNextAsync(cancellationToken: cancellationTokenSource.Token);
+                    Assert.Fail("Should not make it here");
+                }
+                catch(CosmosOperationCanceledException ex)
+                {
+                    ITrace trace = ((CosmosTraceDiagnostics)ex.Diagnostics).Value;
+                    traces.Add(trace);
+                }
+                
+                ITrace traceForest = TraceJoiner.JoinTraces(traces);
+                endLineNumber = GetLineNumber();
+
+                inputs.Add(new Input("ChangeFeed Public API Typed", traceForest, startLineNumber, endLineNumber));
+            }
+            //----------------------------------------------------------------
+
+            this.ExecuteTestSuite(inputs);
+        }
+
         public override Output ExecuteTest(Input input)
         {
             ITrace traceForBaselineTesting = CreateTraceForBaslineTesting(input.Trace, parent: null);
