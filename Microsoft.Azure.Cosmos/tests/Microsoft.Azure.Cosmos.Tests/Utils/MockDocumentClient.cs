@@ -263,7 +263,8 @@ JsonConvert.DeserializeObject<Dictionary<string, object>>("{\"maxSqlQueryInputLe
                         userAgent: this.ConnectionPolicy.UserAgentContainer.UserAgent,
                         connectionMode: this.ConnectionPolicy.ConnectionMode,
                         globalDatabaseAccountName: "testAccount",
-                        httpClient: null);
+                        httpClient: null,
+                        isClientTelemetryEnabled: true);
 
         }
     }
