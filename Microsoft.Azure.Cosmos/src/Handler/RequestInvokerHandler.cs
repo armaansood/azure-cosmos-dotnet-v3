@@ -269,7 +269,10 @@ namespace Microsoft.Azure.Cosmos.Handlers
                         request.Headers.ContentType = RuntimeConstants.MediaTypes.JsonPatch;
                     }
 
-                    if (this.IsTelemetryEnabled(cosmosContainerCore))
+                    if (ClientTelemetry
+                            .IsTelemetryEnabled(
+                                this.client.ClientOptions.EnableClientTelemetry) && 
+                            cosmosContainerCore != null)
                     {
                         request.TelemetryInfo = new TelemetryRequestInfo
                         {
@@ -286,14 +289,6 @@ namespace Microsoft.Azure.Cosmos.Handlers
                     activityScope?.Dispose();
                 }
             }
-        }
-
-        private bool IsTelemetryEnabled(ContainerInternal cosmosContainerCore)
-        {
-            return cosmosContainerCore != null &&
-                   CosmosConfigurationManager
-                       .GetEnvironmentVariable<bool>(ClientTelemetry.EnvPropsClientTelemetryEnabled, 
-                           this.client.ClientOptions.EnableClientTelemetry);
         }
 
         internal static HttpMethod GetHttpMethod(
